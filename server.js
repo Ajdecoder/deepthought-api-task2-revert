@@ -7,7 +7,7 @@ app.get('/', (req, res) => {
   res.render('home');
 })
 
-app.get("/", (req, res) => {
+app.get("/greet", (req, res) => {
   res.send("Hello, World!");
 });
 
