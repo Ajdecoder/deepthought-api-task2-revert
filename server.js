@@ -2,31 +2,23 @@ const express = require("express");
 const { MongoClient, ObjectId } = require("mongodb");
 const dotenv = require("dotenv");
 const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const cloudinary = require("cloudinary").v2;
+const path = require("path");
 
 dotenv.config();
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // MongoDB configuration
 const mongoUrl = process.env.MONGO_URL;
 const dbName = "Eventsdb";
 const collectionName = "nudges";
 
-// Configure multer storage to use Cloudinary
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: "nudges", // folder in your Cloudinary account
-    format: async (req, file) => "png", // convert all images to png format
-    public_id: (req, file) => file.filename, // use original file name
+// Configure multer storage to use local storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // folder where files will be stored
   },
+  filename: (req, file, cb) => {
+    cb(null, file.originalname); // use original file name
+  }
 });
 
 const upload = multer({ storage: storage });
@@ -48,7 +40,6 @@ async function connectToDatabase() {
   }
 }
 
-
 // Serve the home page
 app.get("/", (req, res) => {
   res.render("home");
@@ -67,13 +58,13 @@ app.post("/api/v3/app/nudges", upload.single("coverImage"), async (req, res) => 
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // Cloudinary URL for the image
+    // Local file URL for the image
     const coverImageUrl = req.file.path;
 
     const nudge = {
       tag: req.body.tag,
       title: req.body.title,
-      coverImage: coverImageUrl, // Store the Cloudinary URL in the database
+      coverImage: coverImageUrl, // Store the local file path in the database
       schedule: {
         date: req.body.date,
         time: {
@@ -190,6 +181,9 @@ app.delete("/api/v3/app/nudges/:id", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Start the server
 app.listen(3000, () => {
